@@ -18,7 +18,7 @@ pad_sequences = keras.utils.pad_sequences
 # --------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parent
-ARTIFACTS_DIR = BASE_DIR / "Artifacts"
+ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 MODEL_PATH = ARTIFACTS_DIR / "BIGRU_Modle (1).keras"
 TOKENIZER_PATH = ARTIFACTS_DIR / "tokenizer (1).pkl"

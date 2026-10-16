@@ -1,132 +1,202 @@
 (() => {
   "use strict";
-  const $ = (id) => document.getElementById(id);
-  const COLORS = { sadness:"#6f8cf0", joy:"#f2c14e", love:"#f26d9b", anger:"#f0594c", fear:"#a78bf5", surprise:"#35d0b0" };
-  const SAMPLES = [
-    "I finally got the job and I can't stop smiling",
-    "I miss how things used to be and it hurts",
-    "You lied to me again and I am done with this",
-    "I keep thinking something terrible is about to happen",
-    "I adore the way you laugh at your own jokes",
-    "I opened the box and had no idea what to say",
-  ];
-  const el = { text:$("text"), go:$("go"), count:$("count"), samples:$("samples"), status:$("status"), statusText:$("statusText"),
-    empty:$("empty"), result:$("result"), panel:$("panel"), emoji:$("emoji"), emotion:$("emotion"), conf:$("conf"),
-    quote:$("quote"), spectrum:$("spectrum"), rows:$("rows"), history:$("history"), list:$("historyList"), field:$("field") };
-  const history = [];
-  let busy = false;
 
-  /* ---------- server status ---------- */
+  const EMOJI = {
+    sadness: "😢",
+    joy: "😄",
+    love: "❤️",
+    anger: "😠",
+    fear: "😨",
+    surprise: "😲",
+  };
+
+  const el = {
+    statusDot: document.getElementById("statusDot"),
+    serverStatusText: document.getElementById("serverStatusText"),
+    textInput: document.getElementById("textInput"),
+    charCount: document.getElementById("charCount"),
+    analyzeBtn: document.getElementById("analyzeBtn"),
+    errorMsg: document.getElementById("errorMsg"),
+    orb: document.getElementById("orb"),
+    orbEmoji: document.getElementById("orbEmoji"),
+    resultSection: document.getElementById("resultSection"),
+    emotionWord: document.getElementById("emotionWord"),
+    emotionEmoji: document.getElementById("emotionEmoji"),
+    confidenceText: document.getElementById("confidenceText"),
+    echoedText: document.getElementById("echoedText"),
+    barsContainer: document.getElementById("barsContainer"),
+  };
+
+  let modelReady = false;
+
+  /* ---------------------------------------------------------------
+     Health check — poll until the model is loaded
+  --------------------------------------------------------------- */
   async function checkHealth() {
     try {
-      const r = await fetch("/health", { cache: "no-store" });
-      const d = await r.json();
-      setStatus(d.model_loaded ? "ok" : "down", d.model_loaded ? "Model ready" : "Model not loaded");
-    } catch { setStatus("down", "Server unreachable"); }
-  }
-  function setStatus(state, text) { el.status.dataset.state = state; el.statusText.textContent = text; }
+      const res = await fetch("/health");
+      if (!res.ok) throw new Error("bad status");
+      const data = await res.json();
 
-  /* ---------- input ---------- */
-  function sync() {
-    const n = el.text.value.length;
-    el.count.textContent = n;
-    el.go.disabled = busy || !el.text.value.trim();
+      modelReady = !!data.model_loaded;
+      if (modelReady) {
+        setStatus("live", "model ready — say something");
+      } else {
+        setStatus("warming", "waking the model up…");
+        setTimeout(checkHealth, 3000);
+      }
+    } catch (e) {
+      setStatus("down", "can't reach the server");
+      setTimeout(checkHealth, 5000);
+    }
+    syncButtonState();
   }
-  el.text.addEventListener("input", sync);
-  el.text.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") analyse(); });
-  el.go.addEventListener("click", () => analyse());
 
-  SAMPLES.forEach((s) => {
-    const b = document.createElement("button");
-    b.type = "button"; b.textContent = s.length > 34 ? s.slice(0, 32) + "…" : s; b.title = s;
-    b.addEventListener("click", () => { el.text.value = s; sync(); analyse(); });
-    el.samples.appendChild(b);
+  function setStatus(kind, text) {
+    el.statusDot.className = "brand-mark " + kind;
+    el.serverStatusText.textContent = text;
+  }
+
+  /* ---------------------------------------------------------------
+     Input handling
+  --------------------------------------------------------------- */
+  el.textInput.addEventListener("input", () => {
+    el.charCount.textContent = el.textInput.value.length;
+    syncButtonState();
   });
 
-  /* ---------- prediction ---------- */
-  async function analyse() {
-    const text = el.text.value.trim();
-    if (!text || busy) return;
-    busy = true; el.go.classList.add("loading"); sync(); clearError();
+  el.textInput.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      runAnalysis();
+    }
+  });
+
+  function syncButtonState() {
+    const hasText = el.textInput.value.trim().length > 0;
+    el.analyzeBtn.disabled = !hasText || !modelReady;
+  }
+
+  el.analyzeBtn.addEventListener("click", runAnalysis);
+
+  /* ---------------------------------------------------------------
+     Analysis flow
+  --------------------------------------------------------------- */
+  async function runAnalysis() {
+    const text = el.textInput.value.trim();
+    if (!text || !modelReady) return;
+
+    hideError();
+    enterThinking();
+
     try {
-      const res = await fetch("/predict", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ text }) });
+      const res = await fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+
       if (!res.ok) {
-        let msg = `Request failed (${res.status}).`;
-        try { const j = await res.json(); if (typeof j.detail === "string") msg = j.detail; } catch {}
-        throw new Error(msg);
+        const body = await res.json().catch(() => ({}));
+        const detail =
+          body && body.detail
+            ? typeof body.detail === "string"
+              ? body.detail
+              : "The model couldn't process that sentence."
+            : `Request failed (${res.status}).`;
+        throw new Error(detail);
       }
-      render(await res.json());
+
+      const data = await res.json();
+      renderResult(data, text);
     } catch (err) {
-      showError(err instanceof TypeError ? "Can't reach the server. Check your connection and try again." : err.message);
-    } finally { busy = false; el.go.classList.remove("loading"); sync(); }
+      exitThinking(false);
+      showError(err.message || "Something went wrong. Try again.");
+    }
   }
 
-  function render(d) {
-    document.body.dataset.emotion = d.predicted_emotion;
-    el.panel.dataset.state = "done";
-    el.empty.hidden = true; el.result.hidden = false;
-    el.result.classList.remove("show"); void el.result.offsetWidth; el.result.classList.add("show");
+  function enterThinking() {
+    el.analyzeBtn.classList.add("loading");
+    el.analyzeBtn.querySelector(".btn-label").textContent = "Reading…";
+    el.analyzeBtn.disabled = true;
+    el.orb.classList.remove("settled");
+    el.orb.classList.add("thinking");
+    el.orbEmoji.style.opacity = "0";
+  }
 
-    el.emoji.textContent = d.emoji;
-    el.emotion.textContent = d.predicted_emotion;
-    el.quote.textContent = d.text;
+  function exitThinking(success) {
+    el.analyzeBtn.classList.remove("loading");
+    el.analyzeBtn.querySelector(".btn-label").textContent = "Read the mood";
+    syncButtonState();
+    el.orb.classList.remove("thinking");
+    if (!success) {
+      el.orbEmoji.textContent = "✎";
+      el.orbEmoji.style.opacity = "1";
+    }
+  }
 
-    const entries = Object.entries(d.all_probabilities).sort((a, b) => b[1] - a[1]);
-    el.spectrum.replaceChildren(); el.rows.replaceChildren();
-    const bars = [], segs = [];
-    entries.forEach(([name, p], i) => {
-      const seg = document.createElement("span");
-      seg.style.setProperty("--c", COLORS[name]); seg.title = `${name} ${(p * 100).toFixed(1)}%`;
-      el.spectrum.appendChild(seg); segs.push([seg, p]);
+  function renderResult(data, originalText) {
+    const emotion = data.predicted_emotion;
+    const emoji = EMOJI[emotion] || "🙂";
 
-      const li = document.createElement("li"); if (i === 0) li.className = "top";
-      li.style.setProperty("--c", COLORS[name]);
-      li.innerHTML = '<span class="name"></span><span class="bar"><b></b></span><span class="pct"></span>';
-      li.querySelector(".name").textContent = name;
-      li.querySelector(".pct").textContent = fmt(p);
-      el.rows.appendChild(li); bars.push([li.querySelector("b"), p]);
+    document.body.setAttribute("data-emotion", emotion);
+
+    el.orb.classList.add("settled");
+    el.orbEmoji.textContent = emoji;
+    el.orbEmoji.style.opacity = "1";
+    exitThinking(true);
+
+    el.emotionWord.textContent = capitalize(emotion);
+    el.emotionEmoji.textContent = emoji;
+    el.confidenceText.textContent = `${(data.confidence * 100).toFixed(1)}% confidence`;
+    el.echoedText.textContent = `“${originalText}”`;
+
+    renderBars(data.all_probabilites);
+
+    el.resultSection.hidden = false;
+    el.resultSection.classList.remove("entering");
+    void el.resultSection.offsetWidth; // restart animation
+    el.resultSection.classList.add("entering");
+
+    el.resultSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function renderBars(probs) {
+    const entries = Object.entries(probs).sort((a, b) => b[1] - a[1]);
+    el.barsContainer.innerHTML = "";
+
+    entries.forEach(([label, value], i) => {
+      const pct = value * 100;
+      const row = document.createElement("div");
+      row.className = `bar-row bar-${label}`;
+      row.innerHTML = `
+        <span class="bar-label">${EMOJI[label] || ""} ${label}</span>
+        <span class="bar-track"><span class="bar-fill"></span></span>
+        <span class="bar-pct">${pct.toFixed(1)}%</span>
+      `;
+      el.barsContainer.appendChild(row);
+
+      const fill = row.querySelector(".bar-fill");
+      setTimeout(() => {
+        fill.style.width = pct + "%";
+      }, 60 + i * 70);
     });
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      segs.forEach(([s, p]) => s.style.setProperty("--w", Math.max(p, 0.004)));
-      bars.forEach(([b, p], i) => { b.style.transitionDelay = `${i * 70}ms`; b.style.transform = `scaleX(${Math.max(p, 0.004)})`; });
-    }));
-    countUp(el.conf, d.confidence * 100);
-    pushHistory(d);
   }
 
-  const fmt = (p) => (p * 100 < 0.1 ? "<0.1%" : (p * 100).toFixed(1) + "%");
-
-  function countUp(node, target) {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { node.textContent = target.toFixed(1); return; }
-    const t0 = performance.now(), dur = 900;
-    (function tick(t) {
-      const k = Math.min((t - t0) / dur, 1), e = 1 - Math.pow(1 - k, 3);
-      node.textContent = (target * e).toFixed(1);
-      if (k < 1) requestAnimationFrame(tick);
-    })(t0);
-  }
-
-  /* ---------- history ---------- */
-  function pushHistory(d) {
-    history.unshift(d); if (history.length > 6) history.pop();
-    el.history.hidden = false; el.list.replaceChildren();
-    history.forEach((h) => {
-      const li = document.createElement("li"), b = document.createElement("button");
-      b.type = "button";
-      b.innerHTML = '<span></span><span class="t"></span><span class="p"></span>';
-      b.children[0].textContent = h.emoji; b.children[1].textContent = h.text; b.children[2].textContent = (h.confidence * 100).toFixed(0) + "%";
-      b.addEventListener("click", () => { el.text.value = h.text; sync(); render(h); });
-      li.appendChild(b); el.list.appendChild(li);
-    });
-  }
-
-  /* ---------- errors ---------- */
   function showError(msg) {
-    clearError();
-    const p = document.createElement("p"); p.className = "error"; p.id = "err"; p.setAttribute("role", "alert"); p.textContent = msg;
-    el.field.after(p);
+    el.errorMsg.textContent = msg;
+    el.errorMsg.hidden = false;
   }
-  function clearError() { const e = $("err"); if (e) e.remove(); }
+  function hideError() {
+    el.errorMsg.hidden = true;
+  }
 
-  sync(); checkHealth(); setInterval(checkHealth, 30000);
+  function capitalize(s) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  /* ---------------------------------------------------------------
+     Boot
+  --------------------------------------------------------------- */
+  checkHealth();
 })();

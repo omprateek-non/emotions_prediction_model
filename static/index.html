@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1020">
+<title>Emotive — Emotion Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div class="ambient ambient-one"></div><div class="ambient ambient-two"></div><div class="noise"></div>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="Emotive home"><span class="brand-mark"><span></span><span></span><span></span></span><span>emotive<span class="brand-period">.</span></span></a>
+  <div class="topbar-right"><span class="status-pill"><span class="status-dot" id="statusDot"></span><span id="statusText">Checking model</span></span><a class="docs-link" href="/docs" target="_blank" rel="noreferrer">API docs <span>↗</span></a></div>
+</header>
+<main class="shell">
+<section class="intro">
+  <div class="eyebrow"><span class="eyebrow-line"></span> TEXT EMOTION INTELLIGENCE <span class="eyebrow-index">01 / 03</span></div>
+  <h1>Read between<br>the <span class="gradient-text">lines.</span></h1>
+  <p class="intro-copy">Language carries more than meaning. Explore the emotional signal behind a sentence with a BiGRU-powered text classifier.</p>
+  <div class="model-meta"><span><i class="meta-icon">↗</i> BiGRU neural network</span><span class="meta-separator"></span><span><i class="meta-icon">◎</i> 6 emotion classes</span><span class="meta-separator"></span><span><i class="meta-icon">⌁</i> Live inference</span></div>
+</section>
+<section class="workspace" aria-label="Emotion analysis workspace">
+  <div class="input-panel panel">
+    <div class="panel-heading"><div><span class="section-kicker">INPUT / 001</span><h2>What’s on your mind?</h2></div><span class="input-glyph" aria-hidden="true">✳</span></div>
+    <p class="panel-subtitle">Enter a thought, message, or sentence. The model will estimate its dominant emotion.</p>
+    <form id="emotionForm">
+      <label class="sr-only" for="textInput">Text to analyze</label>
+      <div class="textarea-wrap" id="textareaWrap"><textarea id="textInput" name="text" maxlength="2000" placeholder="“I didn’t expect today to turn out this beautifully…”" required spellcheck="true"></textarea><div class="textarea-bottom"><span class="input-hint"><span class="hint-dot"></span> Your text stays in this session</span><span class="char-count"><span id="charCount">0</span> / 2000</span></div></div>
+      <div class="sample-row"><span class="sample-label">TRY A SAMPLE</span><button type="button" class="sample-chip" data-sample="I feel so happy and excited about what comes next.">Optimistic</button><button type="button" class="sample-chip" data-sample="I keep thinking about everything that could go wrong.">Anxious</button><button type="button" class="sample-chip" data-sample="I miss the way things used to be.">Nostalgic</button></div>
+      <div class="form-actions"><button class="analyze-button" type="submit" id="analyzeButton"><span class="button-label">Analyze emotion</span><span class="button-arrow">↗</span><span class="button-shine"></span></button><button type="button" class="clear-button" id="clearButton">Clear <span>⌫</span></button></div>
+      <p class="form-error" id="formError" role="alert" hidden></p>
+    </form>
+    <div class="input-footer"><span class="footer-lock">◇</span> A model prediction, not a psychological assessment.</div>
+  </div>
+  <div class="result-panel panel" id="resultPanel" aria-live="polite">
+    <div class="panel-heading result-heading"><div><span class="section-kicker">OUTPUT / 002</span><h2>Emotional readout</h2></div><span class="result-orbit" aria-hidden="true"><span></span></span></div>
+    <div class="empty-state" id="emptyState"><div class="orbital-art" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="orbit orbit-c"></div><div class="orb-core"><span>e</span></div><span class="orbit-point point-a"></span><span class="orbit-point point-b"></span><span class="orbit-point point-c"></span></div><p class="empty-title">Your signal, decoded.</p><p class="empty-copy">Your analysis will appear here, with the leading emotion and a breakdown of all six model scores.</p><div class="empty-tag"><span></span> WAITING FOR INPUT</div></div>
+    <div class="loading-state" id="loadingState" hidden><div class="loader-ring"></div><p>Reading the signal<span class="loading-dots">...</span></p><span class="loading-caption">Running model inference</span></div>
+    <div class="prediction-state" id="predictionState" hidden>
+      <div class="prediction-topline"><span>DOMINANT EMOTION</span><span class="prediction-check">✓ ANALYSIS COMPLETE</span></div>
+      <div class="emotion-display"><div class="emotion-symbol" id="emotionSymbol">✦</div><div class="emotion-copy"><h3 id="emotionName">Joy</h3><p id="emotionDescriptor">A positive emotional signal.</p></div><div class="confidence-block"><strong id="confidenceValue">0%</strong><span>CONFIDENCE</span></div></div>
+      <div class="confidence-track"><span id="confidenceTrack"></span></div><div class="divider"></div>
+      <div class="scores-heading"><div><span class="section-kicker">DISTRIBUTION / 006</span><h3>Emotion breakdown</h3></div><span class="scores-note">Model scores</span></div>
+      <div class="score-list" id="scoreList"></div>
+      <div class="analyzed-text"><span class="section-kicker">TEXT ANALYZED</span><p id="analyzedText"></p></div>
+      <button type="button" class="reanalyze-button" id="reanalyzeButton">Analyze another sentence <span>↗</span></button>
+    </div>
+    <div class="result-foot"><span>MODEL OUTPUT</span><span id="resultTimestamp">NO RUN YET</span></div>
+  </div>
+</section>
+<section class="bottom-strip">
+  <div class="bottom-item"><span class="bottom-number">01</span><div><strong>Text preprocessing</strong><p>Tokenization &amp; sequence padding</p></div></div>
+  <div class="bottom-item"><span class="bottom-number">02</span><div><strong>Sequence learning</strong><p>Bidirectional GRU inference</p></div></div>
+  <div class="bottom-item"><span class="bottom-number">03</span><div><strong>Score distribution</strong><p>Six-class model output</p></div></div>
+  <div class="build-label"><span class="build-dot"></span> BUILT WITH FASTAPI <span class="build-divider">/</span> KERAS</div>
+</section>
+</main>
+<footer class="site-footer"><span>EMOTIVE <span class="footer-muted">/</span> TEXT EMOTION INTELLIGENCE</span><span>Designed for clarity. Built for exploration.</span></footer>
+<script src="/static/app.js"></script>
+</body></html>

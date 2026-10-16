@@ -85,7 +85,7 @@ resources = {
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Loading BiGRU model and tokenizer...")
+    print("Loading BIGRU model and tokenizer...")
 
     try:
         if not MODEL_PATH.is_file():
@@ -116,7 +116,7 @@ async def lifespan(app: FastAPI):
                 "are configured. Check the training notebook."
             )
 
-        print("BiGRU model and tokenizer loaded successfully.")
+        print("BIGRU model and tokenizer loaded successfully.")
 
         yield
 

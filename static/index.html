@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tone — Emotion detection from text</title>
+<meta name="description" content="A BiGRU neural network that reads a sentence and tells you which of six emotions it carries.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-emotion="idle">
+<div class="aura" aria-hidden="true"></div>
+
+<header class="top">
+  <span class="brand">Tone</span>
+  <span class="status" id="status" data-state="checking" role="status"><i></i><span id="statusText">Connecting</span></span>
+</header>
+
+<main class="layout">
+  <section class="left">
+    <h1>What is this sentence feeling?</h1>
+    <p class="lede">A bidirectional GRU trained on labelled tweets reads your text and scores it across six emotions. Type anything, or try one of the samples.</p>
+
+    <div class="field" id="field">
+      <label for="text" class="sr">Text to analyse</label>
+      <textarea id="text" rows="5" maxlength="2000" placeholder="I didn't expect the news to hit me this hard…" spellcheck="true"></textarea>
+      <div class="field-foot">
+        <span class="count"><span id="count">0</span> / 2000</span>
+        <button id="go" class="go" type="button" disabled><span class="go-label">Analyse text</span><span class="spin" aria-hidden="true"></span></button>
+      </div>
+    </div>
+    <p class="hint">Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to analyse. Short, first-person sentences work best.</p>
+
+    <div class="samples" id="samples" aria-label="Sample sentences"></div>
+  </section>
+
+  <section class="right" aria-live="polite">
+    <div class="panel" id="panel" data-state="empty">
+      <div class="empty" id="empty">
+        <p>No result yet.</p>
+        <p class="muted">Analyse a sentence and the full probability spread appears here.</p>
+      </div>
+
+      <div class="result" id="result" hidden>
+        <div class="verdict">
+          <div class="emoji" id="emoji"></div>
+          <div>
+            <h2 id="emotion"></h2>
+            <p class="muted"><span id="conf">0</span>% confidence</p>
+          </div>
+        </div>
+        <blockquote id="quote"></blockquote>
+        <div class="spectrum" id="spectrum" aria-hidden="true"></div>
+        <ul class="rows" id="rows"></ul>
+      </div>
+    </div>
+
+    <div class="history" id="history" hidden>
+      <h3>Recent</h3>
+      <ul id="historyList"></ul>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">BiGRU · Keras · FastAPI. Predictions come from a small model, so treat them as a signal, not a verdict.</footer>
+<script src="/static/script.js"></script>
+</body>
+</html>

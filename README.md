@@ -43,31 +43,7 @@ The frontend was developed with the help of AI tools, which I used to assist wit
 - Web interface for interacting with the model
 - FastAPI backend for serving predictions
 
-## Project Structure
-
-```text
-Emotion-Knower/
-├── artifacts/
-│   ├── BIGRU_Model.keras
-│   └── tokenizer.pkl
-├── static/
-│   ├── index.html
-│   ├── style.css
-│   └── app.js
-├── main.py
-├── requirements.txt
-└── README.md
-
-
-## What I Learned
-
-Building this project gave me practical experience with deep learning, NLP, model inference, API development, and connecting a trained model to a frontend. It also helped me understand the work involved in taking a machine learning experiment and turning it into an application that people can interact with.
-
-More importantly, it gave me a way to explore the intersection of technology and my interest in human emotions.
-
-## Limitations
-
-Emotion detection from text is not the same as understanding a person's actual emotional state. Predictions depend on the training data, the language used, and the context available to the model. The output should be treated as a prediction, not a definitive judgment about someone's feelings.
+ame as understanding a person's actual emotional state. Predictions depend on the training data, the language used, and the context available to the model. The output should be treated as a prediction, not a definitive judgment about someone's feelings.
 
 ## Future Improvements
 
